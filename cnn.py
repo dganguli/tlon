@@ -41,8 +41,7 @@ class CNNTrainer:
         self.n_epochs = n_epochs
 
         self.CNN = CNN()
-        print('model on cuda')
-        self.CNN.cuda()
+        #self.CNN.cuda()
 
         self.optimizer = optim.SGD(self.CNN.parameters(),
                                    lr=learning_rate,
@@ -60,8 +59,8 @@ class CNNTrainer:
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
             self.optimizer.zero_grad()
-            data = data.cuda()
-            target = target.cuda()
+            #data = data.cuda()
+            #target = target.cuda()
             output = self.CNN(data)
             loss = F.nll_loss(output, target)
             loss.backward()
@@ -89,8 +88,8 @@ class CNNTrainer:
 
         with torch.no_grad():
             for data, target in self.test_loader:
-                data = data.cuda()
-                target = target.cuda()
+                #data = data.cuda()
+                #target = target.cuda()
                 output = self.CNN(data)
                 test_loss += F.nll_loss(output, target, reduction='sum').item()
                 pred = output.data.max(1, keepdim=True)[1]
@@ -111,7 +110,12 @@ class CNNTrainer:
 
 if __name__ == '__main__':
     from data import load_mnist
-
+    import time
     train_loader, test_loader = load_mnist('/tmp')
     trainer = CNNTrainer(train_loader, test_loader, save_path='/tmp')
-    trainer.train()
+    start = time.time()
+    trainer.train(100)
+    end = time.time()
+    elapsed = end-start
+    print(elapsed)
+
