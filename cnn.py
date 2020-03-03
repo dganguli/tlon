@@ -49,7 +49,7 @@ class CNNTrainer:
         self.train_counter = []
 
         self.test_losses = []
-        self.test_counter = []
+        self.test_counter = [i * len(train_loader.dataset) for i in range(n_epochs + 1)]
 
     def update(self, epoch, log_interval):
 
