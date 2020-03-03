@@ -116,7 +116,7 @@ class CGANTrainer:
                    nrow=n_row,
                    normalize=True)
 
-    def train(self, log_interval):
+    def train(self):
         for epoch in range(self.n_epochs):
             for i, (imgs, labels) in enumerate(self.train_loader):
                 batch_size = imgs.shape[0]
@@ -174,15 +174,11 @@ class CGANTrainer:
                         "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
                         % (epoch, self.n_epochs, i, len(self.train_loader), d_loss.item(), g_loss.item())
                     )
-
-                    batches_done = epoch * len(self.train_loader) + i
-                    if batches_done % log_interval == 0:
-                        self.sample_image(n_row=10, batches_done=batches_done)
-
+            self.sample_image(n_row=10, batches_done=epoch)
 
 if __name__ == '__main__':
     from data import load_mnist
 
     train_loader, test_loader = load_mnist('/tmp')
     trainer = CGANTrainer(train_loader, save_path='/tmp')
-    trainer.train(400)
+    trainer.train()
