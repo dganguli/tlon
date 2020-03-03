@@ -41,6 +41,9 @@ class CNNTrainer:
         self.n_epochs = n_epochs
 
         self.CNN = CNN()
+        print('model on cuda')
+        self.CNN.cuda()
+
         self.optimizer = optim.SGD(self.CNN.parameters(),
                                    lr=learning_rate,
                                    momentum=momentum)
@@ -81,9 +84,12 @@ class CNNTrainer:
         self.CNN.eval()
         test_loss = 0
         correct = 0
+
+        cuda0 = torch.device('cuda:0')  # CUDA GPU 0
+
         with torch.no_grad():
             for data, target in self.test_loader:
-                output = self.CNN(data)
+                output = self.CNN(data.to(cuda0))
                 test_loss += F.nll_loss(output, target, reduction='sum').item()
                 pred = output.data.max(1, keepdim=True)[1]
                 correct += pred.eq(target.data.view_as(pred)).sum()
