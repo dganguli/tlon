@@ -22,7 +22,7 @@ class CNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x)
+        return F.log_softmax(x, 1)
 
 
 class CNNTrainer:
@@ -84,7 +84,7 @@ class CNNTrainer:
         with torch.no_grad():
             for data, target in self.test_loader:
                 output = self.CNN(data)
-                test_loss += F.nll_loss(output, target, size_average=False).item()
+                test_loss += F.nll_loss(output, target, reduction='sum').item()
                 pred = output.data.max(1, keepdim=True)[1]
                 correct += pred.eq(target.data.view_as(pred)).sum()
 
@@ -102,34 +102,8 @@ class CNNTrainer:
 
 
 if __name__ == '__main__':
-    import torchvision
+    from data import load_mnist
 
-    batch_size_train = 64
-    batch_size_test = 1000
-    root_dir = '/tmp'
-
-    train_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.MNIST(root_dir,
-                                   train=True,
-                                   download=True,
-                                   transform=torchvision.transforms.Compose([
-                                       torchvision.transforms.ToTensor(),
-                                       torchvision.transforms.Normalize(
-                                           (0.1307,), (0.3081,))
-                                   ])
-                                   ),
-        batch_size=batch_size_train,
-        shuffle=True
-    )
-
-    test_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.MNIST(root_dir, train=False, download=True,
-                                   transform=torchvision.transforms.Compose([
-                                       torchvision.transforms.ToTensor(),
-                                       torchvision.transforms.Normalize(
-                                           (0.1307,), (0.3081,))
-                                   ])),
-        batch_size=batch_size_test, shuffle=True)
-
+    train_loader, test_loader = load_mnist('/tmp')
     trainer = CNNTrainer(train_loader, test_loader, save_path='/tmp')
     trainer.train()
