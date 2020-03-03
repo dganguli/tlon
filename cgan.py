@@ -1,8 +1,10 @@
-import numpy as np
+import os
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torchvision.utils import save_image
 
 
 class Generator(nn.Module):
@@ -65,7 +67,7 @@ class Discriminator(nn.Module):
 class CGANTrainer:
     def __init__(self,
                  train_loader,
-                 save_path=None,
+                 save_path='/tmp',
                  latent_dim=100,
                  img_shape=(1, 28, 28),
                  n_epochs=200,
@@ -73,6 +75,7 @@ class CGANTrainer:
                  b1=0.5,
                  b2=0.999):
 
+        self.save_path = save_path
         self.latent_dim = latent_dim
         self.train_loader = train_loader
         self.n_epochs = n_epochs
@@ -100,7 +103,20 @@ class CGANTrainer:
         self.optimizer_G = torch.optim.Adam(self.generator.parameters(), lr=learning_rate, betas=(b1, b2))
         self.optimizer_D = torch.optim.Adam(self.discriminator.parameters(), lr=learning_rate, betas=(b1, b2))
 
-    def train(self):
+    def sample_image(self, n_row, batches_done):
+        """Saves a grid of generated digits ranging from 0 to n_classes"""
+        # Sample noise
+        z = Variable(self.FloatTensor(np.random.normal(0, 1, (n_row ** 2, self.latent_dim))))
+        # Get labels ranging from 0 to n_classes for n rows
+        labels = np.array([num for _ in range(n_row) for num in range(n_row)])
+        labels = Variable(self.LongTensor(labels))
+        gen_imgs = self.generator(z, labels)
+        save_image(gen_imgs.data,
+                   os.path.join(self.save_path, "{}.png".format(batches_done)),
+                   nrow=n_row,
+                   normalize=True)
+
+    def train(self, log_interval):
         for epoch in range(self.n_epochs):
             for i, (imgs, labels) in enumerate(self.train_loader):
                 batch_size = imgs.shape[0]
@@ -158,14 +174,15 @@ class CGANTrainer:
                     % (epoch, self.n_epochs, i, len(self.train_loader), d_loss.item(), g_loss.item())
                 )
 
+                batches_done = epoch * len(self.train_loader) + i
+                if batches_done % log_interval == 0:
+                    print("SAVING")
+                    self.sample_image(n_row=10, batches_done=batches_done)
+
+
 if __name__ == '__main__':
     from data import load_mnist
-    import time
 
     train_loader, test_loader = load_mnist('/tmp')
     trainer = CGANTrainer(train_loader, save_path='/tmp')
-    start = time.time()
-    trainer.train(100)
-    end = time.time()
-    elapsed = end - start
-    print(elapsed)
+    trainer.train(400)
