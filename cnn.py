@@ -88,7 +88,7 @@ class CNNTrainer:
         with torch.no_grad():
             for data, target in self.test_loader:
                 output = self.CNN(data.cuda())
-                test_loss += F.nll_loss(output, target, reduction='sum').item()
+                test_loss += F.nll_loss(output, target.cuda(), reduction='sum').item()
                 pred = output.data.max(1, keepdim=True)[1]
                 correct += pred.eq(target.data.view_as(pred)).sum()
 
