@@ -85,11 +85,9 @@ class CNNTrainer:
         test_loss = 0
         correct = 0
 
-        cuda0 = torch.device('cuda:0')  # CUDA GPU 0
-
         with torch.no_grad():
             for data, target in self.test_loader:
-                output = self.CNN(data.to(cuda0))
+                output = self.CNN(data.cuda())
                 test_loss += F.nll_loss(output, target, reduction='sum').item()
                 pred = output.data.max(1, keepdim=True)[1]
                 correct += pred.eq(target.data.view_as(pred)).sum()
