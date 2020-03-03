@@ -169,15 +169,15 @@ class CGANTrainer:
                 d_loss.backward()
                 self.optimizer_D.step()
 
-                print(
-                    "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-                    % (epoch, self.n_epochs, i, len(self.train_loader), d_loss.item(), g_loss.item())
-                )
+                if i % 938 == 0:
+                    print(
+                        "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
+                        % (epoch, self.n_epochs, i, len(self.train_loader), d_loss.item(), g_loss.item())
+                    )
 
-                batches_done = epoch * len(self.train_loader) + i
-                if batches_done % log_interval == 0:
-                    print("SAVING")
-                    self.sample_image(n_row=10, batches_done=batches_done)
+                    batches_done = epoch * len(self.train_loader) + i
+                    if batches_done % log_interval == 0:
+                        self.sample_image(n_row=10, batches_done=batches_done)
 
 
 if __name__ == '__main__':
