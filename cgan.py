@@ -13,6 +13,7 @@ class Generator(nn.Module):
 
         # set to 10 for 10 digits
         self.label_emb = nn.Embedding(num_embeddings=10, embedding_dim=10)
+        self.img_shape = img_shape
 
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
@@ -34,8 +35,7 @@ class Generator(nn.Module):
         # Concatenate label embedding and image to produce input
         gen_input = torch.cat((self.label_emb(labels), noise), -1)
         img = self.model(gen_input)
-        img_shape = (1, 28, 28)
-        img = img.view(img.size(0), *img_shape)
+        img = img.view(img.size(0), *self.img_shape)
         return img
 
 
@@ -106,6 +106,7 @@ class CGANTrainer:
     def sample_image(self, n_row, batches_done):
         """Saves a grid of generated digits ranging from 0 to n_classes"""
         # Sample noise
+        # 100 x 100
         z = Variable(self.FloatTensor(np.random.normal(0, 1, (n_row ** 2, self.latent_dim))))
         # Get labels ranging from 0 to n_classes for n rows
         labels = np.array([num for _ in range(n_row) for num in range(n_row)])

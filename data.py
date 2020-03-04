@@ -10,8 +10,7 @@ def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
                                    download=True,
                                    transform=torchvision.transforms.Compose([
                                        torchvision.transforms.ToTensor(),
-                                       torchvision.transforms.Normalize(
-                                           (0.1307,), (0.3081,))
+                                       torchvision.transforms.Normalize([0.5], [0.5])
                                    ])
                                    ),
         batch_size=batch_size_train,
@@ -22,8 +21,7 @@ def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
         torchvision.datasets.MNIST(save_path, train=False, download=True,
                                    transform=torchvision.transforms.Compose([
                                        torchvision.transforms.ToTensor(),
-                                       torchvision.transforms.Normalize(
-                                           (0.1307,), (0.3081,))
+                                       torchvision.transforms.Normalize([0.5], [0.5])
                                    ])),
         batch_size=batch_size_test, shuffle=True)
 
