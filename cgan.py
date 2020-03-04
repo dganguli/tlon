@@ -60,8 +60,7 @@ class Discriminator(nn.Module):
     def forward(self, img, labels):
         # Concatenate label embedding and image to produce input
         d_in = torch.cat((img.view(img.size(0), -1), self.label_embedding(labels)), -1)
-        validity = self.model(d_in)
-        return validity
+        return self.model(d_in)
 
 
 class CGANTrainer:
@@ -85,7 +84,7 @@ class CGANTrainer:
         self.discriminator = Discriminator(img_shape)
 
         # loss functions
-        self.adversarial_loss = torch.nn.MSELoss()
+        self.mse_loss = torch.nn.MSELoss()
         self.train_counter = []
         self.train_losses_generator = []
         self.train_losses_discriminator = []
@@ -97,7 +96,7 @@ class CGANTrainer:
             print("Sending models to gpu")
             self.generator.cuda()
             self.discriminator.cuda()
-            self.adversarial_loss.cuda()
+            self.mse_loss.cuda()
 
         self.FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
         self.LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
@@ -106,12 +105,47 @@ class CGANTrainer:
         self.optimizer_G = torch.optim.Adam(self.generator.parameters(), lr=learning_rate, betas=(b1, b2))
         self.optimizer_D = torch.optim.Adam(self.discriminator.parameters(), lr=learning_rate, betas=(b1, b2))
 
-    def sample_image(self, n_row, batches_done):
+    def train_generator(self, batch_size):
+        self.optimizer_G.zero_grad()
+
+        # generate synthetic images
+        z = Variable(self.FloatTensor(np.random.normal(0, 1, (batch_size, self.latent_dim))))
+        targets_gen = Variable(self.LongTensor(np.random.randint(0, 10, batch_size)))
+        imgs_gen = self.generator(z, targets_gen)
+
+        # try to fool discriminator into thinking these synthetic images are real
+        labels_real = Variable(self.FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
+        pred = self.discriminator(imgs_gen, targets_gen)
+        g_loss = self.mse_loss(pred, labels_real)
+        g_loss.backward()
+        self.optimizer_G.step()
+
+        return imgs_gen, targets_gen, g_loss
+
+    def train_discriminator(self, imgs_real, targets_real, imgs_gen, targets_gen, batch_size):
+        self.optimizer_D.zero_grad()
+
+        # discriminator should predict these images are real
+        labels_real = Variable(self.FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
+        pred_real = self.discriminator(imgs_real, targets_real)
+        d_real_loss = self.mse_loss(pred_real, labels_real)
+
+        # discriminator should predict these images are fake
+        labels_fake = Variable(self.FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
+        pred_fake = self.discriminator(imgs_gen.detach(), targets_gen)
+        d_fake_loss = self.mse_loss(pred_fake, labels_fake)
+
+        # Total discriminator loss
+        d_loss = 0.5 * d_real_loss + 0.5 * d_fake_loss
+
+        d_loss.backward()
+        self.optimizer_D.step()
+
+        return d_loss
+
+    def save_samples_of_generated_images(self, n_row, batches_done):
         """Saves a grid of generated digits ranging from 0 to n_classes"""
-        # Sample noise
-        # 100 x 100
         z = Variable(self.FloatTensor(np.random.normal(0, 1, (n_row ** 2, self.latent_dim))))
-        # Get labels ranging from 0 to n_classes for n rows
         labels = np.array([num for _ in range(n_row) for num in range(n_row)])
         labels = Variable(self.LongTensor(labels))
         gen_imgs = self.generator(z, labels)
@@ -122,57 +156,24 @@ class CGANTrainer:
 
     def train(self, log_interval=938):
         for epoch in range(self.n_epochs):
-            for i, (imgs, labels) in enumerate(self.train_loader):
+            for i, (imgs, targets_real) in enumerate(self.train_loader):
                 batch_size = imgs.shape[0]
 
-                # Adversarial ground truths
-                valid = Variable(self.FloatTensor(batch_size, 1).fill_(1.0), requires_grad=False)
-                fake = Variable(self.FloatTensor(batch_size, 1).fill_(0.0), requires_grad=False)
+                # configure inputs and outputs for gpu/cpu
+                imgs_real = Variable(imgs.type(self.FloatTensor))
+                targets_real = Variable(targets_real.type(self.LongTensor))
 
-                # Configure input
-                real_imgs = Variable(imgs.type(self.FloatTensor))
-                labels = Variable(labels.type(self.LongTensor))
+                # train generator and collect synthetic images/targets
+                imgs_gen, targets_gen, g_loss = self.train_generator(batch_size)
 
-                # -----------------
-                #  Train Generator
-                # -----------------
+                # train discriminator
+                d_loss = self.train_discriminator(imgs_real,
+                                                  targets_real,
+                                                  imgs_gen,
+                                                  targets_gen,
+                                                  batch_size)
 
-                self.optimizer_G.zero_grad()
-
-                # Sample noise and labels as generator input
-                z = Variable(self.FloatTensor(np.random.normal(0, 1, (batch_size, self.latent_dim))))
-                gen_labels = Variable(self.LongTensor(np.random.randint(0, 10, batch_size)))
-
-                # Generate a batch of images
-                gen_imgs = self.generator(z, gen_labels)
-
-                # Loss measures generator's ability to fool the discriminator
-                validity = self.discriminator(gen_imgs, gen_labels)
-                g_loss = self.adversarial_loss(validity, valid)
-
-                g_loss.backward()
-                self.optimizer_G.step()
-
-                # ---------------------
-                #  Train Discriminator
-                # ---------------------
-
-                self.optimizer_D.zero_grad()
-
-                # Loss for real images
-                validity_real = self.discriminator(real_imgs, labels)
-                d_real_loss = self.adversarial_loss(validity_real, valid)
-
-                # Loss for fake images
-                validity_fake = self.discriminator(gen_imgs.detach(), gen_labels)
-                d_fake_loss = self.adversarial_loss(validity_fake, fake)
-
-                # Total discriminator loss
-                d_loss = (d_real_loss + d_fake_loss) / 2
-
-                d_loss.backward()
-                self.optimizer_D.step()
-
+                # checkpoint models and print losses
                 if i % log_interval == 0:
                     print(
                         "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
@@ -199,7 +200,7 @@ class CGANTrainer:
                                os.path.join(self.save_path, 'optimizer_discriminator.pth')
                                )
 
-            self.sample_image(n_row=10, batches_done=epoch)
+            self.save_samples_of_generated_images(n_row=10, batches_done=epoch)
 
 
 if __name__ == '__main__':
