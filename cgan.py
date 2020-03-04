@@ -86,6 +86,9 @@ class CGANTrainer:
 
         # loss functions
         self.adversarial_loss = torch.nn.MSELoss()
+        self.train_counter = []
+        self.train_losses_generator = []
+        self.train_losses_discriminator = []
 
         # handle gpu
         cuda = True if torch.cuda.is_available() else False
@@ -117,7 +120,7 @@ class CGANTrainer:
                    nrow=n_row,
                    normalize=True)
 
-    def train(self):
+    def train(self, log_interval=938):
         for epoch in range(self.n_epochs):
             for i, (imgs, labels) in enumerate(self.train_loader):
                 batch_size = imgs.shape[0]
@@ -170,12 +173,34 @@ class CGANTrainer:
                 d_loss.backward()
                 self.optimizer_D.step()
 
-                if i % 938 == 0:
+                if i % log_interval == 0:
                     print(
                         "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-                        % (epoch, self.n_epochs, i, len(self.train_loader), d_loss.item(), g_loss.item())
+                        % (epoch + 1, self.n_epochs, i, len(self.train_loader), d_loss.item(), g_loss.item())
                     )
+                    self.train_counter.append(
+                        (i * 64) + ((epoch - 1) * len(self.train_loader.dataset)))
+                    self.train_losses_discriminator.append(d_loss.item())
+                    self.train_losses_generator.append(g_loss.item())
+
+                    torch.save(self.generator.state_dict(),
+                               os.path.join(self.save_path, 'generator.pth')
+                               )
+
+                    torch.save(self.discriminator.state_dict(),
+                               os.path.join(self.save_path, 'discriminator.pth')
+                               )
+
+                    torch.save(self.optimizer_G.state_dict(),
+                               os.path.join(self.save_path, 'optimizer_generator.pth')
+                               )
+
+                    torch.save(self.optimizer_G.state_dict(),
+                               os.path.join(self.save_path, 'optimizer_discriminator.pth')
+                               )
+
             self.sample_image(n_row=10, batches_done=epoch)
+
 
 if __name__ == '__main__':
     from data import load_mnist
