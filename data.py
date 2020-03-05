@@ -40,12 +40,35 @@ def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
     return train_loader, test_loader
 
 
+def load_synthetic_mnist(model_path, batch_size_train=64, batch_size_test=1000):
+    train_loader = torch.utils.DataLoader(
+        SyntheticMNISTDataset(model_path,
+                              num_examples_per_target=6000,
+                              seed=0
+                              ),
+        batch_size=batch_size_train,
+        shuffle=True,
+        num_workers=0)
+
+    test_loader = torch.utils.DataLoader(
+        SyntheticMNISTDataset(model_path,
+                              num_examples_per_target=1000,
+                              seed=1
+                              ),
+        batch_size=batch_size_test,
+        shuffle=True,
+        num_workers=0)
+
+    return train_loader, test_loader
+
+
 class SyntheticMNISTDataset(Dataset):
     def __init__(self,
                  model_path,
                  latent_dim=100,
                  img_size=(1, 28, 28),
-                 num_examples_per_target=10
+                 num_examples_per_target=10,
+                 seed=0
                  ):
         self.num_targets = 10
         self.num_examples_per_target = num_examples_per_target
@@ -55,7 +78,7 @@ class SyntheticMNISTDataset(Dataset):
         if cuda:
             self.cgan.cuda()
 
-        np.random.seed(0)
+        np.random.seed(seed)
         self.z = np.random.normal(0, 1, (self.num_targets * self.num_examples_per_target, latent_dim))
         self.targets = np.array(
             reduce(lambda x, y: x + y, [[d] * self.num_examples_per_target for d in range(self.num_targets)]))
