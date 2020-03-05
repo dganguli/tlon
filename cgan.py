@@ -38,6 +38,11 @@ class Generator(nn.Module):
         img = img.view(img.size(0), *self.img_shape)
         return img
 
+    def from_save_dict(self, model_path):
+        self.load_state_dict(torch.load(model_path))
+        self.eval()
+        return self
+
 
 class Discriminator(nn.Module):
     def __init__(self, img_shape):
@@ -108,7 +113,7 @@ class CGANTrainer:
     def train_generator(self, batch_size):
         self.optimizer_G.zero_grad()
 
-        # generate synthetic images
+        # generate synthetic images and targets
         z = Variable(self.FloatTensor(np.random.normal(0, 1, (batch_size, self.latent_dim))))
         targets_gen = Variable(self.LongTensor(np.random.randint(0, 10, batch_size)))
         imgs_gen = self.generator(z, targets_gen)
