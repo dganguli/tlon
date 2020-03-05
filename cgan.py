@@ -31,12 +31,22 @@ class Generator(nn.Module):
             nn.Tanh()
         )
 
-    def forward(self, noise, labels):
+    def forward(self, z, targets):
         # Concatenate label embedding and image to produce input
-        gen_input = torch.cat((self.label_emb(labels), noise), -1)
+        gen_input = torch.cat((self.label_emb(targets), z), -1)
         img = self.model(gen_input)
         img = img.view(img.size(0), *self.img_shape)
         return img
+
+    def forward_numpy(self, z, targets):
+        cuda = True if torch.cuda.is_available() else False
+        FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+        LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
+
+        z = Variable(FloatTensor(z))
+        targets = Variable(LongTensor(targets))
+
+        return self.forward(z, targets)
 
     def from_save_dict(self, model_path):
         self.load_state_dict(torch.load(model_path))
