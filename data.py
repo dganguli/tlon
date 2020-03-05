@@ -41,7 +41,7 @@ def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
 
 
 def load_synthetic_mnist(model_path, batch_size_train=64, batch_size_test=1000):
-    train_loader = torch.utils.DataLoader(
+    train_loader = torch.utils.data.DataLoader(
         SyntheticMNISTDataset(model_path,
                               num_examples_per_target=6000,
                               seed=0
@@ -50,7 +50,7 @@ def load_synthetic_mnist(model_path, batch_size_train=64, batch_size_test=1000):
         shuffle=True,
         num_workers=0)
 
-    test_loader = torch.utils.DataLoader(
+    test_loader = torch.utils.data.DataLoader(
         SyntheticMNISTDataset(model_path,
                               num_examples_per_target=1000,
                               seed=1
