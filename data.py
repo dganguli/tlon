@@ -1,6 +1,12 @@
+from functools import reduce
+
+import numpy as np
 import torch
 import torchvision
 from six.moves import urllib
+from torch.utils.data import Dataset
+
+from cgan import Generator
 
 
 def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
@@ -32,3 +38,40 @@ def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
         batch_size=batch_size_test, shuffle=True)
 
     return train_loader, test_loader
+
+
+class SyntheticMNISTDataset(Dataset):
+    def __init__(self,
+                 latent_dim=100,
+                 img_size=(1, 28, 28),
+                 num_examples_per_target=10,
+                 model_path='/content/tlon/trained_models/generator.pth',
+                 transform=None
+                 ):
+        self.transform = transform
+        self.num_targets = 10
+        self.num_examples_per_target = num_examples_per_target
+        self.cgan = Generator(latent_dim, img_size).from_save_dict(model_path)
+
+        cuda = True if torch.cuda.is_available() else False
+        if cuda:
+            self.cgan.cuda()
+
+        np.random.seed(0)
+        self.z = np.random.normal(0, 1, (self.num_targets * self.num_examples_per_target, latent_dim))
+        self.targets = np.array(
+            reduce(lambda x, y: x + y, [[d] * self.num_examples_per_target for d in range(self.num_targets)]))
+
+    def __len__(self):
+        return self.num_targets * self.num_examples_per_target
+
+    def __getitem__(self, index):
+        target = np.expand_dims(np.array(self.targets[index]), axis=0)
+        z = np.expand_dims(self.z[index, :], axis=0)
+        img = self.cgan.forward_numpy(z, target)
+        img = img.data.cpu().numpy().squeeze(axis=0).squeeze(axis=0)
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        return img, target
