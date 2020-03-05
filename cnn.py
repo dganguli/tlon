@@ -24,6 +24,11 @@ class CNN(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x, 1)
 
+    def from_save_dict(self, model_path):
+        self.load_state_dict(torch.load(model_path))
+        self.eval()
+        return self
+
 
 class CNNTrainer:
     def __init__(self,
