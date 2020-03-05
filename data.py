@@ -42,13 +42,11 @@ def load_mnist(save_path, batch_size_train=64, batch_size_test=1000):
 
 class SyntheticMNISTDataset(Dataset):
     def __init__(self,
+                 model_path,
                  latent_dim=100,
                  img_size=(1, 28, 28),
-                 num_examples_per_target=10,
-                 model_path='/content/tlon/trained_models/generator.pth',
-                 transform=None
+                 num_examples_per_target=10
                  ):
-        self.transform = transform
         self.num_targets = 10
         self.num_examples_per_target = num_examples_per_target
         self.cgan = Generator(latent_dim, img_size).from_save_dict(model_path)
@@ -69,9 +67,6 @@ class SyntheticMNISTDataset(Dataset):
         target = np.expand_dims(np.array(self.targets[index]), axis=0)
         z = np.expand_dims(self.z[index, :], axis=0)
         img = self.cgan.forward_numpy(z, target)
-        img = img.data.cpu().numpy().squeeze(axis=0).squeeze(axis=0)
+        img = img.squeeze(axis=0)
 
-        if self.transform is not None:
-            img = self.transform(img)
-
-        return img, target
+        return img, target[0]
