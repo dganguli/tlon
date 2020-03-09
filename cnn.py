@@ -20,28 +20,43 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
 
-        self.model = nn.Sequential(
-            OrderedDict([
-                ('conv_1', nn.Conv2d(1, 10, kernel_size=5)),
-                ('max_pool2d_1', nn.MaxPool2d(2)),
-                ('relu_1', nn.ReLU()),
-                ('conv_2', nn.Conv2d(10, 20, kernel_size=5)),
-                ('dropout_2d', nn.Dropout2d()),
-                ('max_pool2d_2', nn.MaxPool2d(2)),
-                ('relu_2', nn.ReLU()),
-                ('reshape', View((-1, 320))),
-                ('fc1', nn.Linear(320, 50)),
-                ('dropout_1d', nn.Dropout()),
-                ('fc2', nn.Linear(50, 10)),
-                ('log_softmax', nn.LogSoftmax(dim=1))
-            ])
-        )
+        self.layers = OrderedDict([
+            ('conv_1', nn.Conv2d(1, 10, kernel_size=5)),
+            ('max_pool2d_1', nn.MaxPool2d(2)),
+            ('relu_1', nn.ReLU()),
+            ('conv_2', nn.Conv2d(10, 20, kernel_size=5)),
+            ('dropout_2d', nn.Dropout2d()),
+            ('max_pool2d_2', nn.MaxPool2d(2)),
+            ('relu_2', nn.ReLU()),
+            ('reshape', View((-1, 320))),
+            ('fc1', nn.Linear(320, 50)),
+            ('dropout_1d', nn.Dropout()),
+            ('fc2', nn.Linear(50, 10)),
+            ('log_softmax', nn.LogSoftmax(dim=1))
+        ])
+        self.model = nn.Sequential(self.layers)
 
     def forward(self, x):
         return self.model(x)
 
     def get_activation_layer(self, x, layer_name):
-        pass
+        self.eval()
+        sub_model_layers = []
+
+        if layer_name not in self.layers:
+            raise ValueError('layer {} not found in model'.format(layer_name))
+        else:
+            for current_layer_name, layer in self.layers.items():
+                sub_model_layers.append(layer)
+                if current_layer_name == layer_name:
+                    break
+
+        model = nn.Sequential(sub_model_layers)
+
+        with torch.no_grad():
+            out = model(x)
+
+        return out
 
     def from_save_dict(self, model_path):
         self.load_state_dict(torch.load(model_path))
