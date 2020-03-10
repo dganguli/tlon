@@ -51,7 +51,7 @@ class CNN(nn.Module):
                 if current_layer_name == layer_name:
                     break
 
-        model = nn.Sequential(sub_model_layers)
+        model = nn.Sequential(*sub_model_layers)
 
         with torch.no_grad():
             out = model(x)
